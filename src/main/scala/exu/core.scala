@@ -28,8 +28,7 @@
 
 package boom.exu
 
-import java.nio.file.{Paths}
-
+import java.nio.file.Paths
 import chisel3._
 import chisel3.util._
 
@@ -61,6 +60,7 @@ class BoomCore()(implicit p: Parameters) extends BoomModule
     val lsu = Flipped(new boom.lsu.LSUCoreIO)
     val ptw_tlb = new freechips.rocketchip.rocket.TLBPTWIO()
     val trace = Output(new TraceBundle)
+    val generic_trace = Output(new GenericTrace(genericTraceInterfaceWidth))
     val fcsr_rm = UInt(freechips.rocketchip.tile.FPConstants.RM_SZ.W)
   }
   //**********************************
@@ -82,6 +82,9 @@ class BoomCore()(implicit p: Parameters) extends BoomModule
     fp_pipeline.io.wb_valids := DontCare
     fp_pipeline.io.wb_pdsts  := DontCare
   }
+
+  io.generic_trace := DontCare
+  io.generic_trace.valid := false.B
 
   val numIrfWritePorts        = exe_units.numIrfWritePorts + memWidth
   val numLlIrfWritePorts      = exe_units.numLlIrfWritePorts
@@ -143,6 +146,7 @@ class BoomCore()(implicit p: Parameters) extends BoomModule
   val int_iss_wakeups  = Wire(Vec(numIntIssueWakeupPorts, Valid(new ExeUnitResp(xLen))))
   val int_ren_wakeups  = Wire(Vec(numIntRenameWakeupPorts, Valid(new ExeUnitResp(xLen))))
   val pred_wakeup  = Wire(Valid(new ExeUnitResp(1)))
+
 
   require (exe_units.length == issue_units.map(_.issueWidth).sum)
 
@@ -283,6 +287,7 @@ class BoomCore()(implicit p: Parameters) extends BoomModule
   val debug_brs     = Reg(Vec(4, UInt(xLen.W)))
   val debug_jals    = Reg(Vec(4, UInt(xLen.W)))
   val debug_jalrs   = Reg(Vec(4, UInt(xLen.W)))
+
 
   for (j <- 0 until 4) {
     debug_brs(j) := debug_brs(j) + PopCount(VecInit((0 until coreWidth) map {i =>
@@ -1394,6 +1399,72 @@ class BoomCore()(implicit p: Parameters) extends BoomModule
   coreMonitorBundle := DontCare
   coreMonitorBundle.clock  := clock
   coreMonitorBundle.reset  := reset
+
+  if (genericTraceInterfaceWidth >= 192 + (coreWidth * 64)) {
+    val tsc_cycle = debug_tsc_reg.pad(64)
+    val cpu_cycle = csr.io.time.pad(64)
+    val dispatching = dis_fire.reduce(_||_)
+    val committing = rob.io.commit.arch_valids.reduce(_||_)
+    val validhead = rob.io.commit.instr_valids.reduce(_||_)
+    val robempty = rob.io.empty
+    val robready = rob.io.ready
+    // rob considered empty if no valid instructions are at head
+    // during rollback this might happen while still rolling back
+    val rollingback = rob.io.commit.rollback
+    val exception = rob.io.com_xcpt.valid
+    val csrstall = csr.io.csr_stall
+    val headmoved = rob.io.rob_head_idx =/= RegNext(rob.io.rob_head_idx)
+    val tailmoved = rob.io.rob_tail_idx =/= RegNext(rob.io.rob_tail_idx)
+
+    val trace_out = !csrstall && (committing || validhead || dispatching || rollingback || exception || headmoved || tailmoved)
+
+    // Make the bit structure parse friendly, use a lot of Cat, Seq and reverse to make a good layout
+    val rob_state = Cat(Seq(committing, validhead, robready, robempty, dispatching, rollingback, exception, RegNext(csrstall)).reverse).pad(8)
+    val instr_info = coreWidth match {
+      case 1 => Cat(Seq(rob.io.commit.arch_valids(0),false.B, false.B, false.B, rob.io.commit.instr_valids(0), false.B, false.B, false.B).reverse)
+      case _ => Cat(Seq(PopCount(rob.io.commit.arch_valids).pad(4), PopCount(rob.io.commit.instr_valids).pad(4)).reverse)
+    }
+
+    val rob_info = Cat(Seq(rob_state, instr_info, rob.io.rob_head_idx.pad(16), rob.io.rob_pnr_idx.pad(16), rob.io.rob_tail_idx.pad(16)).reverse).pad(64)
+    val trace_instr = for (i <- 0 until coreWidth) yield {
+      Cat(
+        Seq(
+          Cat(Seq(rob.io.commit.arch_valids(i), rob.io.commit.instr_valids(i), rob.io.commit.misspeculated(i), rob.io.commit.uops(i).flush_on_commit).reverse).pad(8),
+          rob.io.commit.uops(i).debug_pc(vaddrBits - 1 , 0).pad(56),
+        ).reverse
+      ).pad(64)
+    }
+
+    io.generic_trace.valid := trace_out
+    io.generic_trace.bits := Cat(trace_instr.reverse ++ Seq(rob_info, cpu_cycle, tsc_cycle)).pad(genericTraceInterfaceWidth).asBools()
+
+    if (DEBUG_PRINTF) {
+      printf("%d | %d | [%b%b]", debug_tsc_reg, csr.io.time, rob.io.com_xcpt.valid, rob.io.commit.rollback)
+      for (i <- 0 until coreWidth) {
+        printf(" | [%b%b%b%b] 0x%x", rob.io.commit.instr_valids(i),
+          rob.io.commit.arch_valids(i),
+          rob.io.commit.uops(i).flush_on_commit,
+          rob.io.commit.misspeculated(i),
+          rob.io.commit.uops(i).debug_pc(vaddrBits - 1, 0))
+      }
+      printf("\n")
+/*
+      when (trace_out) {
+        printf("%d | %d | TRACE | %b%b%b%b%b%b%b%b, %d, %d, %d", tsc_cycle, cpu_cycle, committing, validhead, robready, robempty, dispatching, rollingback, exception, csrstall, rob.io.rob_head_idx, rob.io.rob_tail_idx, rob.io.rob_tail_idx)
+        for (i <- 0 until coreWidth) {
+          printf(" | %b%b%b%b 0x%x", rob.io.commit.arch_valids(i),
+            rob.io.commit.instr_valids(i),
+            rob.io.commit.misspeculated(i),
+            rob.io.commit.uops(i).flush_on_commit,
+            rob.io.commit.uops(i).debug_pc(vaddrBits - 1 , 0))
+        }
+        printf("\n")
+      }
+ */
+    }
+    dontTouch(io.generic_trace)
+  }
+  //-------------------------------------------------------------
 
 
   //-------------------------------------------------------------

@@ -55,7 +55,6 @@ case class BoomCoreParams(
   numDCacheBanks: Int = 1,
   nPMPs: Int = 8,
   enableICacheDelay: Boolean = false,
-
   /* branch prediction */
   enableBranchPrediction: Boolean = true,
   branchPredictor: Function2[BranchPredictionBankResponse, Parameters, Tuple2[Seq[BranchPredictorBank], BranchPredictionBankResponse]] = ((resp_in: BranchPredictionBankResponse, p: Parameters) => (Nil, resp_in)),
@@ -66,7 +65,7 @@ case class BoomCoreParams(
   numRasEntries: Int = 32,
   enableRasTopRepair: Boolean = true,
 
-  /* more stuff */
+/* more stuff */
   useCompressed: Boolean = true,
   useFetchMonitor: Boolean = true,
   bootFreqHz: BigInt = 0,
@@ -101,7 +100,8 @@ case class BoomCoreParams(
   /* debug stuff */
   enableCommitLogPrintf: Boolean = false,
   enableBranchPrintf: Boolean = false,
-  enableMemtracePrintf: Boolean = false
+  enableMemtracePrintf: Boolean = false,
+  enableDebugPrintf: Boolean = false,
 
 // DOC include end: BOOM Parameters
 ) extends freechips.rocketchip.tile.CoreParams
@@ -119,6 +119,8 @@ case class BoomCoreParams(
   val useCryptoSM = false
   val traceHasWdata = trace
   val useConditionalZero = false
+
+  override def genericTraceInterfaceWidth : Int = 64 + 64 + 64 + retireWidth * 64
 
   override def customCSRs(implicit p: Parameters) = new BoomCustomCSRs
 }
@@ -293,7 +295,7 @@ trait HasBoomCoreParameters extends freechips.rocketchip.tile.HasCoreParameters
   val COMMIT_LOG_PRINTF   = boomParams.enableCommitLogPrintf // dump commit state, for comparision against ISA sim
   val BRANCH_PRINTF       = boomParams.enableBranchPrintf // dump branch predictor results
   val MEMTRACE_PRINTF     = boomParams.enableMemtracePrintf // dump trace of memory accesses to L1D for debugging
-
+  val DEBUG_PRINTF        = boomParams.enableDebugPrintf
   //************************************
   // Other Non/Should-not-be sythesizable modules
   val useFetchMonitor = boomParams.useFetchMonitor

@@ -47,6 +47,7 @@ case class BoomTileParams(
   icache: Option[ICacheParams] = Some(ICacheParams()),
   dcache: Option[DCacheParams] = Some(DCacheParams()),
   btb: Option[BTBParams] = Some(BTBParams()),
+  genericTrace: Boolean = false,
   name: Option[String] = Some("boom_tile"),
   hartId: Int = 0
 ) extends InstantiableTileParams[BoomTile]
@@ -167,6 +168,7 @@ class BoomTileModuleImp(outer: BoomTile) extends BaseTileModuleImp(outer){
 
   // Pass through various external constants and reports
   outer.traceSourceNode.bundle <> core.io.trace
+  outer.genericTraceSourceNode.bundle <> core.io.generic_trace
   outer.bpwatchSourceNode.bundle <> DontCare // core.io.bpwatch
   core.io.hartid := outer.hartIdSinkNode.bundle
 
