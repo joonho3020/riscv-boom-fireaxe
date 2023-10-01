@@ -555,13 +555,13 @@ class WithNGoldenCoveBooms(n: Int = 1, overrideIdOffset: Option[Int] = None) ext
             core = BoomCoreParams(
               fetchWidth = 8,
               decodeWidth = 6,
-              numRobEntries = 510,
+              numRobEntries = 252,
               issueParams = Seq(
                 IssueParams(issueWidth=2, numEntries=80, iqType=IQT_MEM.litValue, dispatchWidth=6),
                 IssueParams(issueWidth=5, numEntries=80, iqType=IQT_INT.litValue, dispatchWidth=6),
                 IssueParams(issueWidth=2, numEntries=64, iqType=IQT_FP.litValue , dispatchWidth=6)),
-              numIntPhysRegisters = 288,
-              numFpPhysRegisters = 332,
+              numIntPhysRegisters = 256,
+              numFpPhysRegisters = 256,
               numLdqEntries = 192,
               numStqEntries = 114,
               maxBrCount = 128,
