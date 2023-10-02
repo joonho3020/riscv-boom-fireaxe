@@ -643,7 +643,7 @@ class WithNLargeGoldenCoveBooms(n: Int = 1, overrideIdOffset: Option[Int] = None
             core = BoomCoreParams(
               fetchWidth = 8,
               decodeWidth = 8,
-              numRobEntries = 196,
+              numRobEntries = 192,
               issueParams = Seq(
                 IssueParams(issueWidth=2, numEntries=32, iqType=IQT_MEM.litValue, dispatchWidth=8),
                 IssueParams(issueWidth=5, numEntries=48, iqType=IQT_INT.litValue, dispatchWidth=8),
