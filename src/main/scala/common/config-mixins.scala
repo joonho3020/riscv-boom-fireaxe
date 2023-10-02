@@ -543,7 +543,7 @@ class WithSWBPD extends Config((site, here, up) => {
 /**
  * 6-wide BOOM.
   */
-class WithNGoldenCoveBooms(n: Int = 1, overrideIdOffset: Option[Int] = None) extends Config(
+class WithTeraBooms(n: Int = 1, overrideIdOffset: Option[Int] = None) extends Config(
   new WithTAGELBPD ++ // Default to TAGE-L BPD
   new Config((site, here, up) => {
     case TilesLocated(InSubsystem) => {
@@ -554,18 +554,18 @@ class WithNGoldenCoveBooms(n: Int = 1, overrideIdOffset: Option[Int] = None) ext
           tileParams = BoomTileParams(
             core = BoomCoreParams(
               fetchWidth = 8,
-              decodeWidth = 6,
-              numRobEntries = 252,
+              decodeWidth = 8,
+              numRobEntries = 160,
               issueParams = Seq(
-                IssueParams(issueWidth=2, numEntries=80, iqType=IQT_MEM.litValue, dispatchWidth=6),
-                IssueParams(issueWidth=5, numEntries=80, iqType=IQT_INT.litValue, dispatchWidth=6),
-                IssueParams(issueWidth=2, numEntries=64, iqType=IQT_FP.litValue , dispatchWidth=6)),
-              numIntPhysRegisters = 256,
-              numFpPhysRegisters = 256,
-              numLdqEntries = 192,
-              numStqEntries = 114,
-              maxBrCount = 128,
-              numFetchBufferEntries = 144,
+                IssueParams(issueWidth=2, numEntries=32, iqType=IQT_MEM.litValue, dispatchWidth=6),
+                IssueParams(issueWidth=5, numEntries=48, iqType=IQT_INT.litValue, dispatchWidth=6),
+                IssueParams(issueWidth=2, numEntries=40, iqType=IQT_FP.litValue , dispatchWidth=6)),
+              numIntPhysRegisters = 160,
+              numFpPhysRegisters = 160,
+              numLdqEntries = 40,
+              numStqEntries = 40,
+              maxBrCount = 20,
+              numFetchBufferEntries = 64,
               enablePrefetching = true,
               numDCacheBanks = 1,
               ftq = FtqParameters(nEntries=40),
