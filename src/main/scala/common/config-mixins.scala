@@ -565,7 +565,7 @@ class WithNSmallGoldenCoveBooms(n: Int = 1, overrideIdOffset: Option[Int] = None
               numLdqEntries = 32,
               numStqEntries = 32,
               maxBrCount = 20,
-              numFetchBufferEntries = 64,
+              numFetchBufferEntries = 48,
               enablePrefetching = true,
               numDCacheBanks = 1,
               ftq = FtqParameters(nEntries=40),
