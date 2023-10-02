@@ -554,8 +554,8 @@ class WithNSmallGoldenCoveBooms(n: Int = 1, overrideIdOffset: Option[Int] = None
           tileParams = BoomTileParams(
             core = BoomCoreParams(
               fetchWidth = 8,
-              decodeWidth = 8,
-              numRobEntries = 128,
+              decodeWidth = 6,
+              numRobEntries = 132,
               issueParams = Seq(
                 IssueParams(issueWidth=2, numEntries=24, iqType=IQT_MEM.litValue, dispatchWidth=6),
                 IssueParams(issueWidth=5, numEntries=40, iqType=IQT_INT.litValue, dispatchWidth=6),
@@ -601,9 +601,9 @@ class WithNMediumGoldenCoveBooms(n: Int = 1, overrideIdOffset: Option[Int] = Non
               decodeWidth = 8,
               numRobEntries = 160,
               issueParams = Seq(
-                IssueParams(issueWidth=2, numEntries=32, iqType=IQT_MEM.litValue, dispatchWidth=6),
-                IssueParams(issueWidth=5, numEntries=48, iqType=IQT_INT.litValue, dispatchWidth=6),
-                IssueParams(issueWidth=2, numEntries=40, iqType=IQT_FP.litValue , dispatchWidth=6)),
+                IssueParams(issueWidth=2, numEntries=32, iqType=IQT_MEM.litValue, dispatchWidth=8),
+                IssueParams(issueWidth=5, numEntries=48, iqType=IQT_INT.litValue, dispatchWidth=8),
+                IssueParams(issueWidth=2, numEntries=40, iqType=IQT_FP.litValue , dispatchWidth=8)),
               numIntPhysRegisters = 160,
               numFpPhysRegisters = 160,
               numLdqEntries = 40,
@@ -645,9 +645,9 @@ class WithNLargeGoldenCoveBooms(n: Int = 1, overrideIdOffset: Option[Int] = None
               decodeWidth = 8,
               numRobEntries = 196,
               issueParams = Seq(
-                IssueParams(issueWidth=2, numEntries=32, iqType=IQT_MEM.litValue, dispatchWidth=6),
-                IssueParams(issueWidth=5, numEntries=48, iqType=IQT_INT.litValue, dispatchWidth=6),
-                IssueParams(issueWidth=2, numEntries=40, iqType=IQT_FP.litValue , dispatchWidth=6)),
+                IssueParams(issueWidth=2, numEntries=32, iqType=IQT_MEM.litValue, dispatchWidth=8),
+                IssueParams(issueWidth=5, numEntries=48, iqType=IQT_INT.litValue, dispatchWidth=8),
+                IssueParams(issueWidth=2, numEntries=40, iqType=IQT_FP.litValue , dispatchWidth=8)),
               numIntPhysRegisters = 196,
               numFpPhysRegisters = 196,
               numLdqEntries = 40,
