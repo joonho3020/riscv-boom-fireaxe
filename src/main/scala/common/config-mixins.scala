@@ -851,7 +851,7 @@ class WithN100GoldenCoveBooms(n: Int = 1, overrideIdOffset: Option[Int] = None) 
   })
 )
 
-class WithN400GoldenCoveBooms(n: Int = 1, overrideIdOffset: Option[Int] = None) extends Config(
+class WithN40GoldenCoveBooms(n: Int = 1, overrideIdOffset: Option[Int] = None) extends Config(
   new WithTAGELBPD ++ // Default to TAGE-L BPD
   new Config((site, here, up) => {
     case TilesLocated(InSubsystem) => {
