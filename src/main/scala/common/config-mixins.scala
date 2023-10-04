@@ -873,7 +873,7 @@ class WithN60GoldenCoveBooms(n: Int = 1, overrideIdOffset: Option[Int] = None) e
               numLdqEntries = 115,
               numStqEntries = 68,
               maxBrCount = 64,
-              numFetchBufferEntries = 86,
+              numFetchBufferEntries = 84,
               enablePrefetching = true,
               numDCacheBanks = 1,
               ftq = FtqParameters(nEntries=40),
