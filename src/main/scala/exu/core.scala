@@ -35,7 +35,7 @@ import chisel3.util._
 import org.chipsalliance.cde.config.Parameters
 import freechips.rocketchip.rocket.Instructions._
 import freechips.rocketchip.tile.{TraceBundle}
-import freechips.rocketchip.rocket.{Causes, PRV, TracedInstruction}
+import freechips.rocketchip.rocket.{Causes, PRV, TracedInstruction, GenericTrace}
 import freechips.rocketchip.util.{Str, UIntIsOneOf, CoreMonitorBundle}
 import freechips.rocketchip.devices.tilelink.{PLICConsts, CLINTConsts}
 
