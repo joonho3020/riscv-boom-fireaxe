@@ -15,6 +15,7 @@ import freechips.rocketchip.subsystem._
 import freechips.rocketchip.devices.tilelink._
 import freechips.rocketchip.diplomacy._
 
+import freechips.rocketchip.rocket
 import freechips.rocketchip.rocket._
 import freechips.rocketchip.subsystem.{RocketCrossingParams}
 import freechips.rocketchip.tilelink._
@@ -146,6 +147,44 @@ class BoomTile private(
   roccs.map(_.tlNode).foreach { tl => tlOtherMastersNode :=* tl }
 }
 
+class BoomBackendLSUIO(implicit p: Parameters, edge: TLEdgeOut) extends BoomBundle()(p)
+{
+  val ptw   = new rocket.TLBPTWIO
+  val dmem  = new LSUDMemIO
+
+  val hellacache = Flipped(new freechips.rocketchip.rocket.HellaCacheIO)
+}
+
+class BoomBackend(outer: BoomTile)(implicit p: Parameters, edge: TLEdgeOut) extends BoomModule
+  with HasBoomFrontendParameters
+{
+  val io = IO(new Bundle {
+    val lsu = new BoomBackendLSUIO
+    val core = new freechips.rocketchip.tile.CoreBundle {
+      val hartid = Input(UInt(hartIdLen.W))
+      val interrupts = Input(new freechips.rocketchip.tile.CoreInterrupts())
+      val ifu = new boom.ifu.BoomFrontendIO
+      val ptw = Flipped(new freechips.rocketchip.rocket.DatapathPTWIO())
+      val rocc = Flipped(new freechips.rocketchip.tile.RoCCCoreIO())
+// val lsu = Flipped(new boom.lsu.LSUCoreIO)
+      val ptw_tlb = new freechips.rocketchip.rocket.TLBPTWIO()
+      val trace = Output(new TraceBundle)
+      val generic_trace = Output(new GenericTrace(genericTraceInterfaceWidth))
+      val fcsr_rm = UInt(freechips.rocketchip.tile.FPConstants.RM_SZ.W)
+    }
+  })
+
+  val core = Module(new BoomCore()(outer.p))
+  val lsu  = Module(new LSU()(outer.p, edge))
+
+  io.core <> core.io
+
+  core.io.lsu <> lsu.io.core
+  io.lsu.ptw <> lsu.io.ptw
+  io.lsu.dmem <> lsu.io.dmem
+  io.lsu.hellacache <> lsu.io.hellacache
+}
+
 /**
  * BOOM tile implementation
  *
@@ -155,29 +194,27 @@ class BoomTileModuleImp(outer: BoomTile) extends BaseTileModuleImp(outer){
 
   Annotated.params(this, outer.boomParams)
 
-  val core = Module(new BoomCore()(outer.p))
-  val lsu  = Module(new LSU()(outer.p, outer.dcache.module.edge))
+  val backend = Module(new BoomBackend(outer)(outer.p, outer.dcache.module.edge))
 
-  val ptwPorts         = ListBuffer(lsu.io.ptw, outer.frontend.module.io.ptw, core.io.ptw_tlb)
+  val ptwPorts         = ListBuffer(backend.io.lsu.ptw, outer.frontend.module.io.ptw, backend.io.core.ptw_tlb)
 
   val hellaCachePorts  = ListBuffer[HellaCacheIO]()
 
   outer.reportWFI(None) // TODO: actually report this?
 
-  outer.decodeCoreInterrupts(core.io.interrupts) // Decode the interrupt vector
+  outer.decodeCoreInterrupts(backend.io.core.interrupts) // Decode the interrupt vector
 
   // Pass through various external constants and reports
-  outer.traceSourceNode.bundle <> core.io.trace
-  outer.genericTraceSourceNode.bundle <> core.io.generic_trace
+  outer.traceSourceNode.bundle <> backend.io.core.trace
+  outer.genericTraceSourceNode.bundle <> backend.io.core.generic_trace
   outer.bpwatchSourceNode.bundle <> DontCare // core.io.bpwatch
-  core.io.hartid := outer.hartIdSinkNode.bundle
+  backend.io.core.hartid := outer.hartIdSinkNode.bundle
 
   // Connect the core pipeline to other intra-tile modules
-  outer.frontend.module.io.cpu <> core.io.ifu
-  core.io.lsu <> lsu.io.core
+  outer.frontend.module.io.cpu <> backend.io.core.ifu
 
   //fpuOpt foreach { fpu => core.io.fpu <> fpu.io } RocketFpu - not needed in boom
-  core.io.rocc := DontCare
+  backend.io.core.rocc := DontCare
 
   // RoCC
   if (outer.roccs.size > 0) {
@@ -200,7 +237,7 @@ class BoomTileModuleImp(outer: BoomTile) extends BaseTileModuleImp(outer){
         fpuOpt foreach { fpu =>
           // This FPU does not get CPU requests
           fpu.io := DontCare
-          fpu.io.fcsr_rm := core.io.fcsr_rm
+          fpu.io.fcsr_rm := backend.io.core.fcsr_rm
           fpu.io.dmem_resp_val := false.B
           fpu.io.valid := false.B
           fpu.io.killx := false.B
@@ -219,28 +256,28 @@ class BoomTileModuleImp(outer: BoomTile) extends BaseTileModuleImp(outer){
       (respArb, cmdRouter)
     }
 
-    cmdRouter.io.in <> core.io.rocc.cmd
-    outer.roccs.foreach(_.module.io.exception := core.io.rocc.exception)
-    core.io.rocc.resp <> respArb.io.out
-    core.io.rocc.busy <> (cmdRouter.io.busy || outer.roccs.map(_.module.io.busy).reduce(_||_))
-    core.io.rocc.interrupt := outer.roccs.map(_.module.io.interrupt).reduce(_||_)
+    cmdRouter.io.in <> backend.io.core.rocc.cmd
+    outer.roccs.foreach(_.module.io.exception := backend.io.core.rocc.exception)
+    backend.io.core.rocc.resp <> respArb.io.out
+    backend.io.core.rocc.busy <> (cmdRouter.io.busy || outer.roccs.map(_.module.io.busy).reduce(_||_))
+    backend.io.core.rocc.interrupt := outer.roccs.map(_.module.io.interrupt).reduce(_||_)
   }
 
   // PTW
   val ptw  = Module(new PTW(ptwPorts.length)(outer.dcache.node.edges.out(0), outer.p))
-  core.io.ptw <> ptw.io.dpath
+  backend.io.core.ptw <> ptw.io.dpath
   ptw.io.requestor <> ptwPorts.toSeq
   ptw.io.mem +=: hellaCachePorts
 
    // LSU IO
   val hellaCacheArb = Module(new HellaCacheArbiter(hellaCachePorts.length)(outer.p))
   hellaCacheArb.io.requestor <> hellaCachePorts.toSeq
-  lsu.io.hellacache <> hellaCacheArb.io.mem
-  outer.dcache.module.io.lsu <> lsu.io.dmem
+  backend.io.lsu.hellacache <> hellaCacheArb.io.mem
+  outer.dcache.module.io.lsu <> backend.io.lsu.dmem
 
   // Generate a descriptive string
   val frontendStr = outer.frontend.module.toString
-  val coreStr = core.toString
+  val coreStr = backend.core.toString
   val boomTileStr =
     (BoomCoreStringPrefix(s"======BOOM Tile ${staticIdForMetadataUseOnly} Params======") + "\n"
     + frontendStr
