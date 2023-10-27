@@ -50,7 +50,8 @@ case class BoomTileParams(
   btb: Option[BTBParams] = Some(BTBParams()),
   genericTrace: Boolean = false,
   name: Option[String] = Some("boom_tile"),
-  hartId: Int = 0
+  hartId: Int = 0,
+  cloneTile: Boolean = false
 ) extends InstantiableTileParams[BoomTile]
 {
   require(icache.isDefined)

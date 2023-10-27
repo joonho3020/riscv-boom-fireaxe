@@ -324,7 +324,7 @@ class WithCloneBoomTiles(
       .get.asInstanceOf[BoomTileAttachParams]
     (0 until n).map { i =>
       CloneTileAttachParams(cloneTileId, tileAttachParams.copy(
-        tileParams = tileAttachParams.tileParams.copy(hartId = i + idOffset)
+        tileParams = tileAttachParams.tileParams.copy(hartId = i + idOffset, cloneTile = true)
       ))
     } ++ prev
   }
