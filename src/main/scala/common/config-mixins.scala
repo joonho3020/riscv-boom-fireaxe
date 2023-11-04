@@ -975,7 +975,7 @@ class WithN512kBL1IGC40Booms(n: Int = 1, overrideIdOffset: Option[Int] = None) e
               DCacheParams(rowBits = 128, nSets=64, nWays=8, nMSHRs=8, nTLBWays=32)
             ),
             icache = Some(
-              ICacheParams(rowBits = 128, nSets=512, nWays=16, fetchBytes=4*4)
+              ICacheParams(rowBits = 128, nSets=64, nWays=128, fetchBytes=4*4)
             ),
             hartId = i + idOffset
           ),
